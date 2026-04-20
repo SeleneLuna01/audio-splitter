@@ -29,7 +29,7 @@ def upload():
         subprocess.run(['ffmpeg', '-i', filepath, '-q:a', '0', '-map', 'a', mp3_path, '-y'], capture_output=True)
         filepath = mp3_path
     
-    result = subprocess.run(['py', '-3.11', '-m', 'demucs', '--mp3', '--out', OUTPUT_FOLDER, filepath], capture_output=True, text=True)
+    result = subprocess.run(['python', '-m', 'demucs', '--mp3', '--out', OUTPUT_FOLDER, filepath], capture_output=True, text=True)
     print(result.stdout)
     print(result.stderr)
     
@@ -41,4 +41,4 @@ def download(track, filename):
     return send_file(path, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
