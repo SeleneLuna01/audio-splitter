@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
     <title>Audio Splitter</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,7 +35,14 @@
         }
         .upload-area:hover { border-color: #666; }
         .upload-area input { display: none; }
-        .upload-area label { cursor: pointer; color: #888; }
+        .upload-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 12px;
+            opacity: 0.4;
+        }
+        .upload-icon svg { width: 100%; height: 100%; }
+        .upload-label { cursor: pointer; color: #888; font-size: 14px; }
         .filename { color: #fff; margin-top: 8px; font-size: 14px; }
         button {
             background: #fff;
@@ -51,28 +59,72 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         .status { margin-top: 24px; color: #888; font-size: 14px; }
         .downloads { margin-top: 24px; display: none; }
+        .downloads-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
         .downloads a {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             background: #222;
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 12px 14px;
             color: #fff;
             text-decoration: none;
             transition: background 0.2s;
+            font-size: 14px;
         }
-        .downloads a:hover { background: #333; }
+        .downloads a:hover { background: #2e2e2e; }
+        .track-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .track-info { text-align: left; }
+        .track-name { font-size: 13px; font-weight: 500; }
+        .track-sub { font-size: 11px; color: #666; margin-top: 1px; }
+        .preview-player {
+            margin-top: 8px;
+            width: 100%;
+            height: 32px;
+            accent-color: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Audio Splitter</h1>
-        <p>Separate vocals from music in seconds</p>
+        <p>Separate vocals, drums, bass and more</p>
 
-        <div class="upload-area">
+        <div class="upload-area" id="uploadArea">
             <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.m4a,.mp4,.mkv,.avi,.mov,.webm">
-            <label for="fileInput">Click to upload audio file</label>
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <div class="upload-label" id="uploadLabel">Click to upload audio or video</div>
             <div class="filename" id="filename"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button type="button" id="modelFast" onclick="selectModel('htdemucs')" style="flex:1;background:#222;color:#fff;border:2px solid #fff;font-size:13px;padding:10px;">
+                Fast
+                <div style="font-size:11px;color:#888;margin-top:2px;">htdemucs</div>
+            </button>
+            <button type="button" id="modelBest" onclick="selectModel('htdemucs_ft')" style="flex:1;background:#222;color:#888;border:2px solid #333;font-size:13px;padding:10px;">
+                Best Quality
+                <div style="font-size:11px;color:#666;margin-top:2px;">htdemucs_ft</div>
+            </button>
         </div>
 
         <button id="splitBtn" disabled>Split Audio</button>
@@ -80,8 +132,28 @@
         <div class="status" id="status"></div>
 
         <div class="downloads" id="downloads">
-            <a id="vocalsLink" href="#">⬇ Download Vocals</a>
-            <a id="musicLink" href="#">⬇ Download Music</a>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="background:#222;border-radius:8px;padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="track-icon" style="background:#1e2a1e;">🎤</div>
+                        <div class="track-info" style="flex:1;text-align:left;">
+                            <div class="track-name">Vocals</div>
+                            <a id="vocalsLink" href="#" class="track-sub" style="color:#666;text-decoration:none;">Download</a>
+                        </div>
+                    </div>
+                    <audio id="vocalsAudio" class="preview-player" controls style="display:none;"></audio>
+                </div>
+                <div style="background:#222;border-radius:8px;padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="track-icon" style="background:#2a1e2a;">🎵</div>
+                        <div class="track-info" style="flex:1;text-align:left;">
+                            <div class="track-name">No Vocals</div>
+                            <a id="noVocalsLink" href="#" class="track-sub" style="color:#666;text-decoration:none;">Download</a>
+                        </div>
+                    </div>
+                    <audio id="noVocalsAudio" class="preview-player" controls style="display:none;"></audio>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -90,38 +162,112 @@
         const splitBtn = document.getElementById('splitBtn');
         const status = document.getElementById('status');
         const downloads = document.getElementById('downloads');
+        const uploadLabel = document.getElementById('uploadLabel');
+
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        const uploadArea = document.getElementById('uploadArea');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#fff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#333';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#333';
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('filename').textContent = file.name;
+                uploadLabel.textContent = 'Click to change file';
+                splitBtn.disabled = false;
+            }
+        });
 
         fileInput.addEventListener('change', () => {
             const file = fileInput.files[0];
             if (file) {
                 document.getElementById('filename').textContent = file.name;
+                uploadLabel.textContent = 'Click to change file';
                 splitBtn.disabled = false;
+                selectedFile = fileInput.files[0];
             }
         });
 
+        let selectedModel = 'htdemucs';
+        let selectedFile = null;
+
+        function selectModel(model) {
+            selectedModel = model;
+            document.getElementById('modelFast').style.borderColor = model === 'htdemucs' ? '#fff' : '#333';
+            document.getElementById('modelFast').style.color = model === 'htdemucs' ? '#fff' : '#888';
+            document.getElementById('modelBest').style.borderColor = model === 'htdemucs_ft' ? '#fff' : '#333';
+            document.getElementById('modelBest').style.color = model === 'htdemucs_ft' ? '#fff' : '#888';
+        }
+
         splitBtn.addEventListener('click', async () => {
-            const file = fileInput.files[0];
+            const file = selectedFile;
             if (!file) return;
 
             splitBtn.disabled = true;
-            status.textContent = 'Processing... this may take a few minutes ⏳';
             downloads.style.display = 'none';
+            status.innerHTML = 'Uploading... <span id="bar" style="display:inline-block;width:200px;height:6px;background:#333;border-radius:4px;vertical-align:middle;margin-left:8px;"><span id="fill" style="display:block;height:100%;width:0%;background:#fff;border-radius:4px;transition:width 0.3s;"></span></span> <span id="pct">0%</span>';
 
             const formData = new FormData();
+            formData.append('model', selectedModel);
             formData.append('audio', file);
 
-            const res = await fetch('/upload', { method: 'POST', body: formData });
-            const data = await res.json();
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
 
-            if (data.status === 'done') {
-                status.textContent = 'Done! ✓';
-                const name = data.filename;
-                document.getElementById('vocalsLink').href = `/download/vocals/${name}`;
-                document.getElementById('musicLink').href = `/download/no_vocals/${name}`;
-                downloads.style.display = 'block';
-                splitBtn.disabled = false;
+                while (true) {          
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+                            document.getElementById('fill').style.width = data.progress + '%';
+                            document.getElementById('pct').textContent = data.progress + '%';
+                            if (data.error) {
+                                status.textContent = 'Error: ' + data.error + ' ✗';
+                                splitBtn.disabled = false;
+                            }
+                            if (data.status === 'done') {
+                                status.textContent = 'Done! ✓';
+                                const name = data.filename;
+                                document.getElementById('vocalsLink').href = `/download/vocals/${name}`;
+                                document.getElementById('noVocalsLink').href = `/download/no_vocals/${name}`;
+                                const vocalsAudio = document.getElementById('vocalsAudio');
+                                const noVocalsAudio = document.getElementById('noVocalsAudio');
+                                vocalsAudio.src = `/download/vocals/${name}`;
+                                noVocalsAudio.src = `/download/no_vocals/${name}`;
+                                vocalsAudio.style.display = 'block';
+                                noVocalsAudio.style.display = 'block';
+                                downloads.style.display = 'block';
+                                splitBtn.disabled = false;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                    status.textContent = 'Error: something went wrong ✗';
+                    splitBtn.disabled = false;
             }
         });
-    </script>
+</script>
 </body>
 </html>
