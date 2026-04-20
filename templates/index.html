@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Splitter</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 40px;
+            width: 480px;
+            text-align: center;
+        }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        p { color: #888; margin-bottom: 32px; font-size: 14px; }
+        .upload-area {
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover { border-color: #666; }
+        .upload-area input { display: none; }
+        .upload-area label { cursor: pointer; color: #888; }
+        .filename { color: #fff; margin-top: 8px; font-size: 14px; }
+        button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .status { margin-top: 24px; color: #888; font-size: 14px; }
+        .downloads { margin-top: 24px; display: none; }
+        .downloads a {
+            display: block;
+            background: #222;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            color: #fff;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .downloads a:hover { background: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Splitter</h1>
+        <p>Separate vocals from music in seconds</p>
+
+        <div class="upload-area">
+            <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.m4a,.mp4,.mkv,.avi,.mov,.webm">
+            <label for="fileInput">Click to upload audio file</label>
+            <div class="filename" id="filename"></div>
+        </div>
+
+        <button id="splitBtn" disabled>Split Audio</button>
+
+        <div class="status" id="status"></div>
+
+        <div class="downloads" id="downloads">
+            <a id="vocalsLink" href="#">⬇ Download Vocals</a>
+            <a id="musicLink" href="#">⬇ Download Music</a>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const splitBtn = document.getElementById('splitBtn');
+        const status = document.getElementById('status');
+        const downloads = document.getElementById('downloads');
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                document.getElementById('filename').textContent = file.name;
+                splitBtn.disabled = false;
+            }
+        });
+
+        splitBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            splitBtn.disabled = true;
+            status.textContent = 'Processing... this may take a few minutes ⏳';
+            downloads.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            const res = await fetch('/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.status === 'done') {
+                status.textContent = 'Done! ✓';
+                const name = data.filename;
+                document.getElementById('vocalsLink').href = `/download/vocals/${name}`;
+                document.getElementById('musicLink').href = `/download/no_vocals/${name}`;
+                downloads.style.display = 'block';
+                splitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
