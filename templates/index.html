@@ -59,24 +59,18 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         .status { margin-top: 24px; color: #888; font-size: 14px; }
         .downloads { margin-top: 24px; display: none; }
-        .downloads-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .downloads a {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .track-card {
             background: #222;
             border-radius: 8px;
             padding: 12px 14px;
-            color: #fff;
-            text-decoration: none;
-            transition: background 0.2s;
-            font-size: 14px;
+            margin-bottom: 8px;
         }
-        .downloads a:hover { background: #2e2e2e; }
+        .track-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
         .track-icon {
             width: 28px;
             height: 28px;
@@ -87,21 +81,54 @@
             font-size: 14px;
             flex-shrink: 0;
         }
-        .track-info { text-align: left; }
-        .track-name { font-size: 13px; font-weight: 500; }
-        .track-sub { font-size: 11px; color: #666; margin-top: 1px; }
+        .track-name { font-size: 13px; font-weight: 500; text-align: left; }
         .preview-player {
-            margin-top: 8px;
             width: 100%;
             height: 32px;
             accent-color: #fff;
+            margin-bottom: 10px;
         }
+        .track-footer {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .track-footer input {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            outline: none;
+        }
+        .track-footer input:focus {
+            border-color: #555;
+            color: #fff;
+        }
+        .track-footer input::placeholder {
+            color: rgba(255,255,255,0.25);
+        }
+        .download-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            width: auto;
+            transition: background 0.2s;
+        }
+        .download-btn:hover { background: #444; opacity: 1; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Audio Splitter</h1>
-        <p>Separate vocals, drums, bass and more</p>
+        <p>Separate vocals and instrumentals from any audio or video</p>
 
         <div class="upload-area" id="uploadArea">
             <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.m4a,.mp4,.mkv,.avi,.mov,.webm">
@@ -132,26 +159,27 @@
         <div class="status" id="status"></div>
 
         <div class="downloads" id="downloads">
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                <div style="background:#222;border-radius:8px;padding:12px 14px;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div class="track-icon" style="background:#1e2a1e;">🎤</div>
-                        <div class="track-info" style="flex:1;text-align:left;">
-                            <div class="track-name">Vocals</div>
-                            <a id="vocalsLink" href="#" class="track-sub" style="color:#666;text-decoration:none;">Download</a>
-                        </div>
-                    </div>
-                    <audio id="vocalsAudio" class="preview-player" controls style="display:none;"></audio>
+            <div class="track-card">
+                <div class="track-header">
+                    <div class="track-icon" style="background:#1e2a1e;">🎤</div>
+                    <div class="track-name">Vocals</div>
                 </div>
-                <div style="background:#222;border-radius:8px;padding:12px 14px;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div class="track-icon" style="background:#2a1e2a;">🎵</div>
-                        <div class="track-info" style="flex:1;text-align:left;">
-                            <div class="track-name">No Vocals</div>
-                            <a id="noVocalsLink" href="#" class="track-sub" style="color:#666;text-decoration:none;">Download</a>
-                        </div>
-                    </div>
-                    <audio id="noVocalsAudio" class="preview-player" controls style="display:none;"></audio>
+                <audio id="vocalsAudio" class="preview-player" controls style="display:none;"></audio>
+                <div class="track-footer">
+                    <input type="text" id="vocalsFilename" placeholder="vocals.mp3 (optional)">
+                    <button class="download-btn" onclick="handleDownload('vocals')">Download</button>
+                </div>
+            </div>
+
+            <div class="track-card">
+                <div class="track-header">
+                    <div class="track-icon" style="background:#2a1e2a;">🎵</div>
+                    <div class="track-name">No Vocals</div>
+                </div>
+                <audio id="noVocalsAudio" class="preview-player" controls style="display:none;"></audio>
+                <div class="track-footer">
+                    <input type="text" id="noVocalsFilename" placeholder="no_vocals.mp3 (optional)">
+                    <button class="download-btn" onclick="handleDownload('no_vocals')">Download</button>
                 </div>
             </div>
         </div>
@@ -163,6 +191,25 @@
         const status = document.getElementById('status');
         const downloads = document.getElementById('downloads');
         const uploadLabel = document.getElementById('uploadLabel');
+        let currentFilename = '';
+
+        function handleDownload(track) {
+            const inputId = track === 'vocals' ? 'vocalsFilename' : 'noVocalsFilename';
+            const customName = document.getElementById(inputId).value.trim();
+            const defaultName = track === 'vocals' ? currentFilename + '_vocals.mp3' : currentFilename + '_no_vocals.mp3';
+            const finalName = customName ? (customName.endsWith('.mp3') ? customName : customName + '.mp3') : defaultName;
+            
+            fetch(`/download/${track}/${currentFilename}`)
+                .then(res => res.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+        }
 
         document.getElementById('uploadArea').addEventListener('click', () => {
             fileInput.value = '';
@@ -189,6 +236,8 @@
                 document.getElementById('filename').textContent = file.name;
                 uploadLabel.textContent = 'Click to change file';
                 splitBtn.disabled = false;
+                downloads.style.display = 'none';
+                status.textContent = '';
             }
         });
 
@@ -199,6 +248,8 @@
                 uploadLabel.textContent = 'Click to change file';
                 splitBtn.disabled = false;
                 selectedFile = fileInput.files[0];
+                downloads.style.display = 'none';
+                status.textContent = '';
             }
         });
 
@@ -231,8 +282,9 @@
                 const decoder = new TextDecoder();
                 let buffer = '';
 
-                while (true) {          
+                while (true) {
                     const { done, value } = await reader.read();
+                    console.log('chunk received:', done, value);
                     if (done) break;
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
@@ -248,15 +300,15 @@
                             }
                             if (data.status === 'done') {
                                 status.textContent = 'Done! ✓';
-                                const name = data.filename;
-                                document.getElementById('vocalsLink').href = `/download/vocals/${name}`;
-                                document.getElementById('noVocalsLink').href = `/download/no_vocals/${name}`;
+                                currentFilename = data.filename;
                                 const vocalsAudio = document.getElementById('vocalsAudio');
                                 const noVocalsAudio = document.getElementById('noVocalsAudio');
-                                vocalsAudio.src = `/download/vocals/${name}`;
-                                noVocalsAudio.src = `/download/no_vocals/${name}`;
+                                vocalsAudio.src = `/download/vocals/${currentFilename}`;
+                                noVocalsAudio.src = `/download/no_vocals/${currentFilename}`;
                                 vocalsAudio.style.display = 'block';
                                 noVocalsAudio.style.display = 'block';
+                                document.getElementById('vocalsFilename').value = '';
+                                document.getElementById('noVocalsFilename').value = '';
                                 downloads.style.display = 'block';
                                 splitBtn.disabled = false;
                             }
@@ -264,10 +316,11 @@
                     }
                 }
             } catch (err) {
-                    status.textContent = 'Error: something went wrong ✗';
-                    splitBtn.disabled = false;
+                console.error(err);
+                status.textContent = 'Error: something went wrong ✗';
+                splitBtn.disabled = false;
             }
         });
-</script>
+    </script>
 </body>
 </html>
